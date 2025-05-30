@@ -1,2 +1,4 @@
 .venv
 model
+__pycache__
+reference_images

@@ -1,7 +1,8 @@
 Flask==2.3.2
-tensorflow
-numpy
+tensorflow=2.15.0
+numpy==1.24.4
 mysql-connector-python
 Flask-Cors
 joblib
 Pillow
+opencv-python
