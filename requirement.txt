@@ -6,3 +6,4 @@ Flask-Cors
 joblib
 Pillow
 opencv-python
+gdown
