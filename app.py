@@ -5,31 +5,71 @@ import logging
 from MlCon import proccess, Predict
 from l1dist import L1Dist
 from flask_cors import CORS
+import gdown
+
+app = Flask(__name__)
+CORS(app, supports_credentials=True, origins=["http://localhost:5173","https://tafe-pi.vercel.app/"])
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app, supports_credentials=True, origins="http://localhost:5173")
+# Konfigurasi model
+MODEL_DIR = 'model'
+MODEL_FILE = 'siamesemodel_FIX.h5'
+MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILE)
+GOOGLE_DRIVE_URL = "https://drive.google.com/uc?id=1Xrx2tVFimDhWn9aWUCjrwLKMtFvryXp5"
 
 # Global model
 model = None
-predictor = Predict()
+predictor = None
+
+def download_model():
+    """Download model dari Google Drive jika belum ada"""
+    try:
+        # Buat direktori model jika belum ada
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        
+        # Cek apakah model sudah ada
+        if not os.path.exists(MODEL_PATH):
+            logger.info("Downloading model from Google Drive...")
+            gdown.download(GOOGLE_DRIVE_URL, MODEL_PATH, quiet=False)
+            logger.info(f"Model downloaded to {MODEL_PATH}")
+        else:
+            logger.info("Model already exists, skipping download")
+            
+        return True
+    except Exception as e:
+        logger.error(f"Failed to download model: {str(e)}")
+        return False
+    
+def load_model():
+    global model
+    try:
+        if not os.path.exists(MODEL_PATH):
+            logger.info("Model not found, downloading...")
+            gdown.download(GOOGLE_DRIVE_URL, MODEL_PATH, fuzzy=True, quiet=False)
+        logger.info("Loading model...")
+        model_handler = proccess()
+        model = model_handler.load_model(MODEL_PATH)
+        logger.info("Model loaded successfully")
+    except Exception as e:
+        logger.critical(f"Failed to load model: {e}")
+        raise
+
+# Load model saat aplikasi start
+try:
+    if download_model():
+        load_model()
+        predictor = Predict()
+    else:
+        raise RuntimeError("Model download failed")
+except Exception as e:
+    logger.critical(f"Application failed to start: {str(e)}")
+    exit(1)
 
 # Direktori untuk gambar referensi
 REFERENCE_IMAGES_DIR = 'reference_images'
-
-# Load model saat aplikasi dijalankan
-def load_model():
-    global model
-    logger.info("Loading model...")
-    model_handler = proccess()
-    model = model_handler.load_model('model/siamesemodel_FIX.h5')
-    logger.info("Model loaded successfully.")
-
-    # Load model before first request
-load_model()
 
 @app.route('/verify', methods=['POST'])
 def verify():
